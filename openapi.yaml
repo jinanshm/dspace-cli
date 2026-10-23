@@ -1,0 +1,381 @@
+openapi: 3.0.3
+info:
+  title: DSpace XMLUI API
+  version: 1.0.0
+  description: |
+    JSON facade over DSpace 4-6 XMLUI repositories. Where no REST/OAI/OpenSearch
+    API is usable, this service parses the XMLUI Discovery HTML and exposes
+    normalized JSON.
+
+    All endpoints are read-only. TLS verification and legacy renegotiation are
+    handled server-side; clients never talk to the upstream directly.
+servers:
+  - url: http://127.0.0.1:8787
+    description: Local
+paths:
+  /api/health:
+    get:
+      summary: Liveness and endpoint index
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  uptimeSeconds: { type: integer }
+                  requests: { type: integer }
+                  configured: { type: boolean }
+                  upstream: { type: string, format: uri, nullable: true }
+                  platform: { type: string }
+                  endpoints: { type: array, items: { type: string } }
+  /api/stats:
+    get:
+      summary: Repository totals
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: integer, example: 12000 }
+                  itemsWithFiles: { type: integer, example: 8000 }
+                  platform: { type: string }
+                  baseUrl: { type: string, format: uri }
+                  fetchedAt: { type: string, format: date-time }
+  /api/search:
+    get:
+      summary: Search the repository
+      parameters:
+        - name: q
+          in: query
+          description: Solr query (supports AND/OR, quotes, title:/author:). Defaults to *:*.
+          schema: { type: string, default: "*:*" }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: size
+          in: query
+          description: Results per page, 1-100.
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [relevance, title, date, dateAsc, author]
+            default: relevance
+        - name: order
+          in: query
+          schema: { type: string, enum: [asc, desc] }
+        - name: collection
+          in: query
+          description: Community or collection handle to scope the search.
+          schema: { type: string, example: "123456789/42" }
+        - name: field
+          in: query
+          schema:
+            type: string
+            enum: [title, author, subject, dateIssued, has_content_in_original_bundle]
+        - name: operator
+          in: query
+          schema:
+            type: string
+            enum: [contains, equals, authority, notcontains, notequals, notauthority]
+            default: contains
+        - name: value
+          in: query
+          schema: { type: string, example: "2024" }
+        - name: hasFile
+          in: query
+          description: Only items with a bitstream.
+          schema: { type: boolean, default: false }
+        - name: includeFiles
+          in: query
+          description: Fetch item pages and attach pdfUrl/files to results.
+          schema: { type: boolean, default: false }
+        - name: enrichLimit
+          in: query
+          description: Cap the number of results to enrich; defaults to the whole page.
+          schema: { type: integer, minimum: 0 }
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResponse"
+        "502":
+          $ref: "#/components/responses/UpstreamError"
+  /api/items/{handle}:
+    get:
+      summary: Full item record
+      parameters:
+        - $ref: "#/components/parameters/Handle"
+        - name: full
+          in: query
+          description: Include the dcMetadata table.
+          schema: { type: boolean, default: true }
+      responses:
+        "200":
+          description: Item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+        "404": { $ref: "#/components/responses/NotFound" }
+        "502": { $ref: "#/components/responses/UpstreamError" }
+  /api/items/{handle}/files:
+    get:
+      summary: Bitstreams for an item
+      parameters:
+        - $ref: "#/components/parameters/Handle"
+      responses:
+        "200":
+          description: File list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  handle: { type: string }
+                  title: { type: string, nullable: true }
+                  count: { type: integer }
+                  files:
+                    type: array
+                    items: { $ref: "#/components/schemas/File" }
+                  pdfUrl: { type: string, format: uri, nullable: true }
+                  itemUrl: { type: string, format: uri }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/items/{handle}/pdf:
+    get:
+      summary: Resolve or stream the first PDF
+      parameters:
+        - $ref: "#/components/parameters/Handle"
+        - name: proxy
+          in: query
+          description: When present, stream the bytes instead of redirecting.
+          schema: { type: boolean }
+      responses:
+        "302":
+          description: Redirect to the upstream bitstream
+          headers:
+            Location:
+              schema: { type: string, format: uri }
+        "200":
+          description: PDF bytes (proxy mode)
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/communities:
+    get:
+      summary: Top-level communities with item counts
+      responses:
+        "200":
+          description: Communities
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count: { type: integer }
+                  communities:
+                    type: array
+                    items: { $ref: "#/components/schemas/ArtifactRef" }
+  /api/communities/{handle}:
+    get:
+      summary: Community with sub-communities and collections
+      parameters:
+        - $ref: "#/components/parameters/Handle"
+      responses:
+        "200":
+          description: Community
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  handle: { type: string }
+                  name: { type: string, nullable: true }
+                  url: { type: string, format: uri }
+                  subcommunities:
+                    type: array
+                    items: { $ref: "#/components/schemas/ArtifactRef" }
+                  collections:
+                    type: array
+                    items: { $ref: "#/components/schemas/ArtifactRef" }
+        "502": { $ref: "#/components/responses/UpstreamError" }
+  /api/collections:
+    get:
+      summary: All collections directly under top-level communities
+      responses:
+        "200":
+          description: Collections sorted by item count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count: { type: integer }
+                  collections:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: "#/components/schemas/ArtifactRef"
+                        - type: object
+                          properties:
+                            community: { type: string, nullable: true }
+  /api/raw:
+    get:
+      summary: Debug passthrough to an XMLUI path
+      parameters:
+        - name: path
+          in: query
+          required: true
+          schema: { type: string, example: "/discover?query=medicine&rpp=1" }
+      responses:
+        "200":
+          description: Upstream body (first 200 KB)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  upstream: { type: string, format: uri }
+                  status: { type: integer }
+                  contentType: { type: string }
+                  bytes: { type: integer }
+                  body: { type: string }
+        "400": { $ref: "#/components/responses/BadRequest" }
+components:
+  parameters:
+    Handle:
+      name: handle
+      in: path
+      required: true
+      description: Handle, optionally URL-encoded (e.g. 123456789%2F42).
+      schema: { type: string, example: "123456789/42" }
+  responses:
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    UpstreamError:
+      description: Upstream repository failure
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            status: { type: integer }
+            message: { type: string }
+            details: { type: object, nullable: true }
+    File:
+      type: object
+      properties:
+        name: { type: string }
+        filename: { type: string }
+        size: { type: string, nullable: true, example: "120.5Kb" }
+        format: { type: string, nullable: true, example: PDF }
+        sequence: { type: integer, nullable: true }
+        url: { type: string, format: uri }
+        isPdf: { type: boolean }
+    ArtifactRef:
+      type: object
+      properties:
+        handle: { type: string, example: "123456789/7" }
+        name: { type: string }
+        itemCount: { type: integer, nullable: true }
+        url: { type: string, format: uri }
+    SearchResult:
+      type: object
+      properties:
+        id: { type: string, example: "123456789/42" }
+        handle: { type: string }
+        title: { type: string }
+        authors: { type: array, items: { type: string } }
+        publisher: { type: string, nullable: true }
+        issued: { type: string, nullable: true, example: "2024-05-01" }
+        abstract: { type: string, nullable: true }
+        url: { type: string, format: uri }
+        pdfUrl: { type: string, format: uri, nullable: true }
+        files:
+          type: array
+          items: { $ref: "#/components/schemas/File" }
+    SearchResponse:
+      type: object
+      properties:
+        query: { type: string }
+        total: { type: integer }
+        page: { type: integer }
+        size: { type: integer }
+        pages: { type: integer, nullable: true }
+        showing:
+          type: object
+          properties:
+            from: { type: integer }
+            to: { type: integer }
+        tookMs: { type: integer, nullable: true }
+        sort:
+          type: object
+          properties:
+            by: { type: string }
+            order: { type: string, nullable: true }
+        results:
+          type: array
+          items: { $ref: "#/components/schemas/SearchResult" }
+        upstream: { type: string, format: uri }
+    Item:
+      type: object
+      properties:
+        handle: { type: string }
+        title: { type: string, nullable: true }
+        authors: { type: array, items: { type: string } }
+        publisher: { type: string, nullable: true }
+        issued: { type: string, nullable: true }
+        type: { type: string, nullable: true }
+        language: { type: string, nullable: true }
+        subject: { type: array, items: { type: string } }
+        abstract: { type: string, nullable: true }
+        uri: { type: string, nullable: true }
+        metadata:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: object
+              properties:
+                value: { type: string }
+                lang: { type: string, nullable: true }
+                scheme: { type: string, nullable: true }
+        collections:
+          type: array
+          items: { $ref: "#/components/schemas/ArtifactRef" }
+        files:
+          type: array
+          items: { $ref: "#/components/schemas/File" }
+        pdfUrl: { type: string, format: uri, nullable: true }
+        url: { type: string, format: uri, nullable: true }
+        dcMetadata:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              value: { type: string }
+              lang: { type: string, nullable: true }

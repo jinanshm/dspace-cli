@@ -1,0 +1,32 @@
+{
+  "name": "dspace-cli",
+  "version": "1.0.0",
+  "description": "REST API and CLI for DSpace 4-6 XMLUI repositories: search, item metadata and PDF links.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jinanshm/dspace-cli.git"
+  },
+  "homepage": "https://github.com/jinanshm/dspace-cli#readme",
+  "bugs": {
+    "url": "https://github.com/jinanshm/dspace-cli/issues"
+  },
+  "main": "src/server.js",
+  "bin": { "dspace-cli": "src/cli.js" },
+  "scripts": {
+    "start": "bun src/server.js",
+    "start:bg": "powershell -ExecutionPolicy Bypass -File scripts/start.ps1",
+    "stop": "powershell -ExecutionPolicy Bypass -File scripts/stop.ps1",
+    "dev": "bun --watch src/server.js",
+    "test": "bun test",
+    "stats": "bun src/cli.js stats"
+  },
+  "keywords": [
+    "dspace",
+    "xmlui",
+    "repository",
+    "cli",
+    "rest-api"
+  ],
+  "engines": { "bun": ">=1.1" },
+  "packageManager": "bun@1.4.2"
+}

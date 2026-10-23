@@ -1,0 +1,14 @@
+# dependencies
+node_modules/
+
+# local runtime state (pid, logs, harvested output)
+data/
+*.log
+
+# local research artifacts (not published)
+research/
+
+# local env overrides
+.env
+.env.*
+.DS_Store
