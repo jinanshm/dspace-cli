@@ -2,6 +2,7 @@
   "name": "dspace-cli",
   "version": "1.0.0",
   "description": "REST API and CLI for DSpace 4-6 XMLUI repositories: search, item metadata and PDF links.",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jinanshm/dspace-cli.git"

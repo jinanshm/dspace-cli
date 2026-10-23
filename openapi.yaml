@@ -9,6 +9,9 @@ info:
 
     All endpoints are read-only. TLS verification and legacy renegotiation are
     handled server-side; clients never talk to the upstream directly.
+  license:
+    name: MIT
+    url: https://github.com/jinanshm/dspace-cli/blob/main/LICENSE
 servers:
   - url: http://127.0.0.1:8787
     description: Local

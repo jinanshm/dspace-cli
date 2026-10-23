@@ -228,3 +228,7 @@ scripts/            detached start/stop helpers (Windows)
   renegotiation where the runtime supports it.
 - If the server fails with `EADDRINUSE`, another process owns the port (default
   `8787`). Stop it or set `DSPACE_PORT`.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
