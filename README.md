@@ -17,7 +17,7 @@ API reference: [`docs/api.md`](docs/api.md) · OpenAPI: [`openapi.yaml`](openapi
 
 ## Requirements
 
-- [Bun](https://bun.sh) 1.1+ (recommended), or Node 18+
+- [Bun](https://bun.sh) 1.1+ (recommended) or Node 18+
 - Network access to the target repository
 
 ## Configuration
@@ -101,7 +101,16 @@ Per-command overrides avoid exporting the environment:
 bun src/cli.js stats --base-url https://repository.example.org
 ```
 
-Install it globally as `dspace-cli`:
+### Install
+
+From npm (the CLI entry point runs on Node 18+; Bun works too):
+
+```bash
+npm install -g dspace-cli
+dspace-cli stats --base-url https://repository.example.org
+```
+
+From this repository:
 
 ```bash
 bun link

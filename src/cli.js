@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 "use strict";
 /**
  * CLI for DSpace 4-6 XMLUI repositories.

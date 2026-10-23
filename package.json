@@ -11,14 +11,24 @@
   "bugs": {
     "url": "https://github.com/jinanshm/dspace-cli/issues"
   },
-  "main": "src/server.js",
+  "main": "src/dspace.js",
   "bin": { "dspace-cli": "src/cli.js" },
+  "files": [
+    "src/",
+    "docs/api.md",
+    "openapi.yaml",
+    "scripts/",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "start": "bun src/server.js",
+    "start:node": "node src/server.js",
     "start:bg": "powershell -ExecutionPolicy Bypass -File scripts/start.ps1",
     "stop": "powershell -ExecutionPolicy Bypass -File scripts/stop.ps1",
     "dev": "bun --watch src/server.js",
     "test": "bun test",
+    "prepublishOnly": "bun test",
     "stats": "bun src/cli.js stats"
   },
   "keywords": [
@@ -28,6 +38,7 @@
     "cli",
     "rest-api"
   ],
-  "engines": { "bun": ">=1.1" },
+  "engines": { "node": ">=18", "bun": ">=1.1" },
+  "publishConfig": { "access": "public" },
   "packageManager": "bun@1.4.2"
 }
